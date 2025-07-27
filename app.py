@@ -4,6 +4,13 @@ import os
 import json
 from datetime import datetime
 
+import json
+
+# Ensure lisa_memory.json exists
+if not os.path.exists("lisa_memory.json"):
+    with open("lisa_memory.json", "w") as f:
+        json.dump([], f)
+
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET", "your-dev-secret")
 
