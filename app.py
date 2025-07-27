@@ -1,17 +1,31 @@
 from flask import Flask, request, jsonify, render_template, session
-import openai
-import anthropic
+from openai import OpenAI
 import os
 import json
 from datetime import datetime
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("FLASK_SECRET", "dev-secret")
+app.secret_key = os.environ.get("FLASK_SECRET", "your-dev-secret")
 
-ANTHROPIC_KEY = os.environ.get("CLAUDE_API_KEY")  # Set this in your Render or local .env
+MEMORY_FILE = "lisa_memory.json"
 
-# Claude setup (optional)
-claude_client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
+# --- Helper: Save to memory file ---
+def save_to_memory(input_text, output_text):
+    memory = []
+    if os.path.exists(MEMORY_FILE):
+        with open(MEMORY_FILE, "r") as f:
+            memory = json.load(f)
+    memory.append({
+        "timestamp": datetime.now().isoformat(),
+        "input": input_text,
+        "output": output_text
+    })
+    with open(MEMORY_FILE, "w") as f:
+        json.dump(memory, f, indent=2)
+
+# --- Helper: Offline fallback response ---
+def offline_response(user_input):
+    return f"LISA (offline memory): I can't reach the AI right now, but here's what I recall:\n'{user_input[:100]}...' — Let's talk more!"
 
 @app.route('/')
 def home():
@@ -30,54 +44,38 @@ def analyze():
     user_input = request.json.get("text", "")
     openai_key = session.get("openai_key")
 
-    if not user_input.strip():
+    if not user_input:
         return jsonify({"error": "No input provided"}), 400
 
-    reply = "No AI model available for response."
-    model_used = "none"
-
-    try:
-        # Try OpenAI first if key is present
-        if openai_key:
-            openai.api_key = openai_key
-            completion = openai.ChatCompletion.create(
+    # If OpenAI key is available, try it
+    if openai_key:
+        try:
+            client = OpenAI(api_key=openai_key)
+            response = client.chat.completions.create(
                 model="gpt-4",
                 messages=[
                     {"role": "system", "content": "You're a negotiation assistant."},
                     {"role": "user", "content": user_input}
                 ]
             )
-            reply = completion.choices[0].message.content
-            model_used = "openai-gpt-4"
+            reply = response.choices[0].message.content.strip()
+            save_to_memory(user_input, reply)
+            return jsonify({"intent": "ai-generated", "suggestions": [reply]})
+        except Exception as e:
+            print("OpenAI failed:", e)
 
-        # Try Claude if no OpenAI key but Claude key is available
-        elif ANTHROPIC_KEY:
-            claude_response = claude_client.messages.create(
-                model="claude-3-opus-20240229",
-                max_tokens=1024,
-                messages=[{"role": "user", "content": user_input}]
-            )
-            reply = claude_response.content[0].text
-            model_used = "claude-3-opus"
+    # (Optional) Claude fallback could go here (scaffold only)
+    # try:
+    #     reply = claude_response(user_input)
+    #     save_to_memory(user_input, reply)
+    #     return jsonify({"intent": "ai-generated", "suggestions": [reply]})
+    # except Exception as e:
+    #     print("Claude failed:", e)
 
-        # Record what LISA sees and learns
-        record_learning(user_input, reply, model_used)
-
-        return jsonify({"intent": "ai-generated", "suggestions": [reply]})
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-# 🔍 Logs everything LISA hears and sees into a .jsonl file
-def record_learning(user_input, reply, model_used):
-    log = {
-        "timestamp": datetime.utcnow().isoformat(),
-        "input": user_input,
-        "reply": reply,
-        "model": model_used
-    }
-    with open("lisa_learning_log.jsonl", "a") as f:
-        f.write(json.dumps(log) + "\n")
+    # Final fallback — local memory
+    reply = offline_response(user_input)
+    save_to_memory(user_input, reply)
+    return jsonify({"intent": "memory-fallback", "suggestions": [reply]})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
