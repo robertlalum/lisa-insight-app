@@ -1,34 +1,50 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <title>LISA Insight Assistant</title>
 </head>
 <body>
     <h1>💬 LISA — Conversation Analyzer</h1>
+
+    <label for="api-key">OpenAI API Key (optional):</label><br />
+    <input type="text" id="api-key" placeholder="sk-..." size="50" /><br /><br />
+
     <form id="analyze-form">
-        <textarea id="user-input" rows="5" cols="60" placeholder="Type what you just heard..."></textarea><br>
+        <textarea
+            id="user-input"
+            rows="5"
+            cols="60"
+            placeholder="Type what you just heard..."
+        ></textarea
+        ><br />
         <button type="submit">Analyze</button>
     </form>
+
     <div id="result"></div>
 
     <script>
-        document.getElementById('analyze-form').addEventListener('submit', async (e) => {
+        document.getElementById("analyze-form").addEventListener("submit", async (e) => {
             e.preventDefault();
-            const text = document.getElementById('user-input').value;
-            const res = await fetch('/analyze', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text })
+            const text = document.getElementById("user-input").value;
+            const apiKey = document.getElementById("api-key").value;
+
+            const res = await fetch("/analyze", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text, api_key: apiKey }),
             });
+
             const data = await res.json();
-            document.getElementById('result').innerHTML = `
-                <h2>Intent:</h2> <p>${data.intent}</p>
-                <h2>Suggestions:</h2> <ul>${data.suggestions.map(s => `<li>${s}</li>`).join('')}</ul>
+            document.getElementById("result").innerHTML = `
+                <h2>Intent:</h2>
+                <p>${data.intent || "N/A"}</p>
+                <h2>Suggestions:</h2>
+                <ul>${(data.suggestions || []).map((s) => `<li>${s}</li>`).join("")}</ul>
+                ${data.error ? `<h3 style="color:red">Error: ${data.error}</h3>` : ""}
             `;
         });
     </script>
 </body>
 </html>
-
 
