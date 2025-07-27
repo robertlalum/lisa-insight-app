@@ -2,8 +2,11 @@ from flask import Flask, request, jsonify, render_template
 
 app = Flask(__name__)
 
-@app.route("/")
-@app.route("/analyze", methods=["POST"])
+@app.route('/')
+def home():
+    return render_template('index.html')
+
+@app.route('/analyze', methods=['POST'])
 def analyze():
     data = request.get_json()
     user_input = data.get("text", "").lower()
@@ -38,10 +41,7 @@ def analyze():
         "suggestions": suggestions
     })
 
-@app.route('/')
-def home():
-    return render_template('index.html')
-    
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
 
