@@ -1,161 +1,83 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>LISA — Insight Assistant</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <title>LISA HUD</title>
   <style>
     body {
-      font-family: 'Inter', sans-serif;
-      background: #0e101c;
-      color: #ffffff;
       margin: 0;
-      padding: 40px 20px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+      padding: 0;
+      background: transparent;
+      font-family: sans-serif;
     }
 
-    h1 {
-      font-size: 2rem;
-      margin-bottom: 20px;
-      color: #00ffd5;
-    }
-
-    form {
-      background: #1b1d2b;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 0 20px rgba(0, 255, 213, 0.1);
-      margin-bottom: 20px;
-      width: 100%;
-      max-width: 600px;
-    }
-
-    label {
-      display: block;
-      margin-bottom: 8px;
-      font-weight: 600;
-    }
-
-    input, textarea, button {
-      font-family: 'Inter', sans-serif;
-      width: 100%;
-      padding: 12px;
-      margin-bottom: 12px;
-      border: none;
-      border-radius: 8px;
-      font-size: 1rem;
-    }
-
-    textarea {
-      resize: vertical;
-      min-height: 100px;
-    }
-
-    input[type="password"] {
-      background-color: #2c2f4a;
+    #hud {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.8);
       color: #fff;
+      padding: 16px;
+      border-radius: 10px;
+      width: 300px;
+      display: none;
+      z-index: 1000;
+      animation: fadeIn 0.5s ease-in-out;
     }
 
-    textarea {
-      background-color: #2c2f4a;
-      color: #fff;
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
-    button {
-      background-color: #00ffd5;
-      color: #000;
-      font-weight: bold;
-      cursor: pointer;
-      transition: background 0.2s ease;
-    }
-
-    button:hover {
-      background-color: #00c2a8;
-    }
-
-    #result {
-      background: #1b1d2b;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 0 15px rgba(0, 255, 213, 0.1);
-      width: 100%;
-      max-width: 600px;
+    h2 {
+      margin: 0 0 8px 0;
+      font-size: 16px;
     }
 
     ul {
-      padding-left: 20px;
-    }
-
-    li {
-      margin-bottom: 8px;
-    }
-
-    ::placeholder {
-      color: #888;
+      margin: 0;
+      padding-left: 16px;
+      font-size: 14px;
     }
   </style>
 </head>
 <body>
-  <h1>💬 LISA — Conversation Analyzer</h1>
 
-  <form id="api-key-form">
-    <label for="api-key">🔑 Enter your OpenAI API key:</label>
-    <input type="password" id="api-key" placeholder="sk-..." />
-    <button type="submit">Save Key</button>
-  </form>
+<div id="hud">
+  <h2>Intent:</h2>
+  <p id="intent-text"></p>
+  <h2>Suggestions:</h2>
+  <ul id="suggestions-list"></ul>
+</div>
 
-  <form id="analyze-form">
-    <label for="user-input">🧠 Paste a message or sentence to analyze:</label>
-    <textarea id="user-input" placeholder="Type what you just heard..."></textarea>
-    <button type="submit">Analyze</button>
-  </form>
-
-  <div id="result" style="display: none;"></div>
-
-  <script>
-    let apiKey = "";
-
-    document.getElementById("api-key-form").addEventListener("submit", (e) => {
-      e.preventDefault();
-      apiKey = document.getElementById("api-key").value.trim();
-      alert("🔐 API key saved for this session.");
+<script>
+  async function sendTextToLISA(text) {
+    const res = await fetch("/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text })
     });
+    const data = await res.json();
 
-    document.getElementById("analyze-form").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const text = document.getElementById("user-input").value;
+    const hud = document.getElementById("hud");
+    const intentText = document.getElementById("intent-text");
+    const suggestionsList = document.getElementById("suggestions-list");
 
-      if (!apiKey) {
-        alert("Please enter your API key first.");
-        return;
-      }
+    intentText.textContent = data.intent;
+    suggestionsList.innerHTML = data.suggestions.map(s => `<li>${s}</li>`).join('');
+    hud.style.display = "block";
 
-      const res = await fetch("/analyze", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer " + apiKey
-        },
-        body: JSON.stringify({ text })
-      });
+    setTimeout(() => { hud.style.display = "none"; }, 7000); // Hide after 7 seconds
+  }
 
-      const data = await res.json();
+  // Simulated text for now — replace with real-time input later
+  setTimeout(() => {
+    sendTextToLISA("I don't know, maybe we should wait until next quarter");
+  }, 1000);
+</script>
 
-      if (data.error) {
-        document.getElementById("result").innerHTML = `<p style="color: red;">⚠️ ${data.error}</p>`;
-      } else {
-        document.getElementById("result").innerHTML = `
-          <h2>🔍 Intent:</h2> <p>${data.intent}</p>
-          <h2>💡 Suggestions:</h2>
-          <ul>${data.suggestions.map(s => `<li>${s}</li>`).join('')}</ul>
-        `;
-      }
-
-      document.getElementById("result").style.display = "block";
-    });
-  </script>
 </body>
 </html>
 
+    
