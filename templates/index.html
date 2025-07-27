@@ -2,32 +2,125 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>LISA Insight Assistant</title>
+  <title>LISA — Insight Assistant</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #0e101c;
+      color: #ffffff;
+      margin: 0;
+      padding: 40px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 20px;
+      color: #00ffd5;
+    }
+
+    form {
+      background: #1b1d2b;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(0, 255, 213, 0.1);
+      margin-bottom: 20px;
+      width: 100%;
+      max-width: 600px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    input, textarea, button {
+      font-family: 'Inter', sans-serif;
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    input[type="password"] {
+      background-color: #2c2f4a;
+      color: #fff;
+    }
+
+    textarea {
+      background-color: #2c2f4a;
+      color: #fff;
+    }
+
+    button {
+      background-color: #00ffd5;
+      color: #000;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    button:hover {
+      background-color: #00c2a8;
+    }
+
+    #result {
+      background: #1b1d2b;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(0, 255, 213, 0.1);
+      width: 100%;
+      max-width: 600px;
+    }
+
+    ul {
+      padding-left: 20px;
+    }
+
+    li {
+      margin-bottom: 8px;
+    }
+
+    ::placeholder {
+      color: #888;
+    }
+  </style>
 </head>
 <body>
   <h1>💬 LISA — Conversation Analyzer</h1>
 
   <form id="api-key-form">
-    <label for="api-key">🔑 Enter your OpenAI API key:</label><br />
-    <input type="password" id="api-key" placeholder="sk-..." style="width: 300px;" />
+    <label for="api-key">🔑 Enter your OpenAI API key:</label>
+    <input type="password" id="api-key" placeholder="sk-..." />
     <button type="submit">Save Key</button>
   </form>
 
-  <form id="analyze-form" style="margin-top: 20px;">
-    <textarea id="user-input" rows="5" cols="60" placeholder="Type what you just heard..."></textarea><br />
+  <form id="analyze-form">
+    <label for="user-input">🧠 Paste a message or sentence to analyze:</label>
+    <textarea id="user-input" placeholder="Type what you just heard..."></textarea>
     <button type="submit">Analyze</button>
   </form>
 
-  <div id="result" style="margin-top: 20px;"></div>
+  <div id="result" style="display: none;"></div>
 
   <script>
     let apiKey = "";
 
-    // Save API key locally in memory (not stored)
     document.getElementById("api-key-form").addEventListener("submit", (e) => {
       e.preventDefault();
       apiKey = document.getElementById("api-key").value.trim();
-      alert("API key saved for this session.");
+      alert("🔐 API key saved for this session.");
     });
 
     document.getElementById("analyze-form").addEventListener("submit", async (e) => {
@@ -49,11 +142,20 @@
       });
 
       const data = await res.json();
-      document.getElementById("result").innerHTML = `
-        <h2>Intent:</h2><p>${data.intent}</p>
-        <h2>Suggestions:</h2><ul>${data.suggestions.map(s => `<li>${s}</li>`).join("")}</ul>
-      `;
+
+      if (data.error) {
+        document.getElementById("result").innerHTML = `<p style="color: red;">⚠️ ${data.error}</p>`;
+      } else {
+        document.getElementById("result").innerHTML = `
+          <h2>🔍 Intent:</h2> <p>${data.intent}</p>
+          <h2>💡 Suggestions:</h2>
+          <ul>${data.suggestions.map(s => `<li>${s}</li>`).join('')}</ul>
+        `;
+      }
+
+      document.getElementById("result").style.display = "block";
     });
   </script>
 </body>
 </html>
+
