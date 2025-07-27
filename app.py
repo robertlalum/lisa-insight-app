@@ -46,10 +46,49 @@ def set_key():
         return jsonify({"message": "API key set successfully"})
     return jsonify({"error": "No key provided"}), 400
 
+
 @app.route('/analyze', methods=["POST"])
 def analyze():
+    import json
+
     user_input = request.json.get("text", "")
     openai_key = session.get("openai_key")
+
+    if openai_key:
+        openai.api_key = openai_key
+        try:
+            completion = openai.ChatCompletion.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": "You're a negotiation assistant."},
+                    {"role": "user", "content": user_input}
+                ]
+            )
+            reply = completion.choices[0].message.content
+
+            # Save to LISA's memory
+            with open("lisa_memory.json", "r+") as f:
+                memory = json.load(f)
+                memory.append({"prompt": user_input, "response": reply})
+                f.seek(0)
+                json.dump(memory, f, indent=2)
+                f.truncate()
+
+            return jsonify({"intent": "ai-generated", "suggestions": [reply]})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    else:
+        # No key — check memory for a past match
+        try:
+            with open("lisa_memory.json", "r") as f:
+                memory = json.load(f)
+            for entry in reversed(memory):
+                if entry["prompt"].strip().lower() == user_input.strip().lower():
+                    return jsonify({"intent": "learned", "suggestions": [entry["response"]]})
+        except Exception:
+            pass
+
+        return jsonify({"intent": "none", "suggestions": ["I don’t have an answer yet, but I’m still learning."]})
 
     if not user_input:
         return jsonify({"error": "No input provided"}), 400
