@@ -1,83 +1,95 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>LISA HUD</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      background: transparent;
-      font-family: sans-serif;
-    }
-
-    #hud {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: rgba(0, 0, 0, 0.8);
-      color: #fff;
-      padding: 16px;
-      border-radius: 10px;
-      width: 300px;
-      display: none;
-      z-index: 1000;
-      animation: fadeIn 0.5s ease-in-out;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(-20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    h2 {
-      margin: 0 0 8px 0;
-      font-size: 16px;
-    }
-
-    ul {
-      margin: 0;
-      padding-left: 16px;
-      font-size: 14px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <title>LISA Insight Assistant</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 2rem;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        #result, #settings {
+            margin-top: 1rem;
+        }
+        #settings {
+            display: none;
+            background: #fff;
+            padding: 1rem;
+            border: 1px solid #ccc;
+        }
+        #settings input {
+            width: 100%;
+        }
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+        }
+        .top-bar button {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
+    <div class="top-bar">
+        <h1>💬 LISA — Conversation Analyzer</h1>
+        <button onclick="toggleSettings()">⚙️</button>
+    </div>
 
-<div id="hud">
-  <h2>Intent:</h2>
-  <p id="intent-text"></p>
-  <h2>Suggestions:</h2>
-  <ul id="suggestions-list"></ul>
-</div>
+    <div id="settings">
+        <h3>Enter OpenAI API Key</h3>
+        <input type="password" id="api-key" placeholder="sk-..." />
+        <button onclick="saveKey()">Save Key</button>
+    </div>
 
-<script>
-  async function sendTextToLISA(text) {
-    const res = await fetch("/analyze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text })
-    });
-    const data = await res.json();
+    <form id="analyze-form">
+        <textarea id="user-input" rows="5" cols="60" placeholder="Type what you just heard..."></textarea><br>
+        <button type="submit">Analyze</button>
+    </form>
+    <div id="result"></div>
 
-    const hud = document.getElementById("hud");
-    const intentText = document.getElementById("intent-text");
-    const suggestionsList = document.getElementById("suggestions-list");
+    <script>
+        function toggleSettings() {
+            const box = document.getElementById('settings');
+            box.style.display = box.style.display === 'none' ? 'block' : 'none';
+        }
 
-    intentText.textContent = data.intent;
-    suggestionsList.innerHTML = data.suggestions.map(s => `<li>${s}</li>`).join('');
-    hud.style.display = "block";
+        async function saveKey() {
+            const key = document.getElementById('api-key').value;
+            const res = await fetch('/set-key', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key })
+            });
+            const data = await res.json();
+            alert(data.message || data.error);
+        }
 
-    setTimeout(() => { hud.style.display = "none"; }, 7000); // Hide after 7 seconds
-  }
-
-  // Simulated text for now — replace with real-time input later
-  setTimeout(() => {
-    sendTextToLISA("I don't know, maybe we should wait until next quarter");
-  }, 1000);
-</script>
-
+        document.getElementById('analyze-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const text = document.getElementById('user-input').value;
+            const res = await fetch('/analyze', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text })
+            });
+            const data = await res.json();
+            if (data.error) {
+                document.getElementById('result').innerHTML = `<p style="color:red;">Error: ${data.error}</p>`;
+            } else {
+                document.getElementById('result').innerHTML = `
+                    <h2>Intent:</h2> <p>${data.intent}</p>
+                    <h2>Suggestions:</h2> <ul>${data.suggestions.map(s => `<li>${s}</li>`).join('')}</ul>
+                `;
+            }
+        });
+    </script>
 </body>
 </html>
+
 
     
