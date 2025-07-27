@@ -1,95 +1,91 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>LISA Insight Assistant</title>
-    <style>
-        body {
-            font-family: sans-serif;
-            padding: 2rem;
-            background-color: #f4f4f4;
-            color: #333;
-        }
-        #result, #settings {
-            margin-top: 1rem;
-        }
-        #settings {
-            display: none;
-            background: #fff;
-            padding: 1rem;
-            border: 1px solid #ccc;
-        }
-        #settings input {
-            width: 100%;
-        }
-        .top-bar {
-            display: flex;
-            justify-content: space-between;
-        }
-        .top-bar button {
-            background: none;
-            border: none;
-            font-size: 1.2rem;
-            cursor: pointer;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <title>LISA — Insight Assistant</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 40px;
+      background-color: #f2f2f7;
+      color: #333;
+    }
+    textarea, input {
+      width: 100%;
+      font-size: 1rem;
+      margin: 10px 0;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 1rem;
+      margin-top: 10px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+    #result {
+      margin-top: 30px;
+      padding: 15px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+  </style>
 </head>
 <body>
-    <div class="top-bar">
-        <h1>💬 LISA — Conversation Analyzer</h1>
-        <button onclick="toggleSettings()">⚙️</button>
-    </div>
+  <h1>💬 LISA — Conversation Analyzer</h1>
 
-    <div id="settings">
-        <h3>Enter OpenAI API Key</h3>
-        <input type="password" id="api-key" placeholder="sk-..." />
-        <button onclick="saveKey()">Save Key</button>
-    </div>
+  <label for="api-key">🔑 Enter OpenAI API Key:</label>
+  <input type="password" id="api-key" placeholder="sk-..."><br>
+  <button onclick="setApiKey()">Set API Key</button>
 
-    <form id="analyze-form">
-        <textarea id="user-input" rows="5" cols="60" placeholder="Type what you just heard..."></textarea><br>
-        <button type="submit">Analyze</button>
-    </form>
-    <div id="result"></div>
+  <hr>
 
-    <script>
-        function toggleSettings() {
-            const box = document.getElementById('settings');
-            box.style.display = box.style.display === 'none' ? 'block' : 'none';
-        }
+  <form id="analyze-form">
+    <textarea id="user-input" rows="5" cols="60" placeholder="Type what you just heard..."></textarea><br>
+    <button type="submit">Analyze</button>
+  </form>
 
-        async function saveKey() {
-            const key = document.getElementById('api-key').value;
-            const res = await fetch('/set-key', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key })
-            });
-            const data = await res.json();
-            alert(data.message || data.error);
-        }
+  <div id="result"></div>
 
-        document.getElementById('analyze-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const text = document.getElementById('user-input').value;
-            const res = await fetch('/analyze', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text })
-            });
-            const data = await res.json();
-            if (data.error) {
-                document.getElementById('result').innerHTML = `<p style="color:red;">Error: ${data.error}</p>`;
-            } else {
-                document.getElementById('result').innerHTML = `
-                    <h2>Intent:</h2> <p>${data.intent}</p>
-                    <h2>Suggestions:</h2> <ul>${data.suggestions.map(s => `<li>${s}</li>`).join('')}</ul>
-                `;
-            }
-        });
-    </script>
+  <script>
+    async function setApiKey() {
+      const key = document.getElementById('api-key').value;
+      if (!key.startsWith("sk-")) {
+        alert("Please enter a valid OpenAI API key.");
+        return;
+      }
+      const res = await fetch('/set-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key })
+      });
+      const data = await res.json();
+      alert(data.message || data.error);
+    }
+
+    document.getElementById('analyze-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const text = document.getElementById('user-input').value;
+      const res = await fetch('/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+      const data = await res.json();
+      if (data.error) {
+        document.getElementById('result').innerHTML = `<p style="color:red;">Error: ${data.error}</p>`;
+      } else {
+        document.getElementById('result').innerHTML = `
+          <h2>Intent:</h2><p>${data.intent}</p>
+          <h2>Suggestions:</h2><ul>${data.suggestions.map(s => `<li>${s}</li>`).join('')}</ul>
+        `;
+      }
+    });
+  </script>
 </body>
 </html>
 
-
+        
     
