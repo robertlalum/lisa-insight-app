@@ -1,44 +1,41 @@
 from flask import Flask, request, jsonify, render_template, session
-import openai
+from openai import OpenAI
 import os
 import json
 from datetime import datetime
 
-app = Flask(__name__)
-app.secret_key = os.environ.get("FLASK_SECRET", "your-dev-secret")  # Change this in production
-
+# Ensure lisa_memory.json exists
 MEMORY_FILE = "lisa_memory.json"
-
-# --- Ensure lisa_memory.json exists ---
 if not os.path.exists(MEMORY_FILE):
     with open(MEMORY_FILE, "w") as f:
         json.dump([], f)
 
-# --- Save interaction to memory file ---
+app = Flask(__name__)
+app.secret_key = os.environ.get("FLASK_SECRET", "your-dev-secret")
+
+# Helper: Save to memory
 def save_to_memory(input_text, output_text):
     try:
-        memory = []
-        if os.path.exists(MEMORY_FILE):
-            with open(MEMORY_FILE, "r") as f:
-                memory = json.load(f)
-        memory.append({
-            "timestamp": datetime.now().isoformat(),
-            "input": input_text,
-            "output": output_text
-        })
-        with open(MEMORY_FILE, "w") as f:
+        with open(MEMORY_FILE, "r+") as f:
+            memory = json.load(f)
+            memory.append({
+                "timestamp": datetime.now().isoformat(),
+                "prompt": input_text,
+                "response": output_text
+            })
+            f.seek(0)
             json.dump(memory, f, indent=2)
+            f.truncate()
     except Exception as e:
-        print("Failed to save memory:", e)
+        print("Error saving memory:", e)
 
-# --- Offline response helper ---
+# Fallback reply if AI is unavailable
 def offline_response(user_input):
-    return f"LISA (offline memory): I can’t reach the AI right now, but I remember you said:\n‘{user_input[:100]}...’ Let’s keep talking when I’m back online."
+    return f"LISA (offline): I can’t reach the AI now, but here’s what I recall:\n'{user_input[:100]}…'"
 
-# --- Routes ---
 @app.route('/')
 def home():
-    return render_template('index.html')  # Make sure you have a templates/index.html
+    return render_template('index.html')
 
 @app.route('/set-key', methods=["POST"])
 def set_key():
@@ -50,20 +47,19 @@ def set_key():
 
 @app.route('/analyze', methods=["POST"])
 def analyze():
-    user_input = request.json.get("text", "").strip()
+    user_input = request.json.get("text", "")
+    openai_key = session.get("openai_key")
+
     if not user_input:
         return jsonify({"error": "No input provided"}), 400
 
-    openai_key = session.get("openai_key")
-
-    # --- If OpenAI key is available ---
     if openai_key:
-        openai.api_key = openai_key
         try:
-            response = openai.ChatCompletion.create(
+            client = OpenAI(api_key=openai_key)
+            response = client.chat.completions.create(
                 model="gpt-4",
                 messages=[
-                    {"role": "system", "content": "You're a helpful negotiation assistant."},
+                    {"role": "system", "content": "You're a negotiation assistant."},
                     {"role": "user", "content": user_input}
                 ]
             )
@@ -71,25 +67,21 @@ def analyze():
             save_to_memory(user_input, reply)
             return jsonify({"intent": "ai-generated", "suggestions": [reply]})
         except Exception as e:
-            print("OpenAI API error:", e)
-            # Continue to memory fallback below
+            return jsonify({"error": f"OpenAI error: {str(e)}"}), 500
 
-    # --- If no OpenAI key or API call failed ---
+    # Try to find a learned memory fallback
     try:
         with open(MEMORY_FILE, "r") as f:
             memory = json.load(f)
         for entry in reversed(memory):
-            if entry["input"].strip().lower() == user_input.lower():
-                return jsonify({"intent": "learned", "suggestions": [entry["output"]]})
-    except Exception as e:
-        print("Memory fallback error:", e)
+            if entry["prompt"].strip().lower() == user_input.strip().lower():
+                return jsonify({"intent": "learned", "suggestions": [entry["response"]]})
+    except Exception:
+        pass
 
-    # --- Final fallback response ---
     reply = offline_response(user_input)
     save_to_memory(user_input, reply)
     return jsonify({"intent": "memory-fallback", "suggestions": [reply]})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
-
-        
