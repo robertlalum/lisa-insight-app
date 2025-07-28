@@ -57,7 +57,7 @@ def analyze():
         try:
             client = OpenAI(api_key=openai_key)
             response = client.chat.completions.create(
-                model="gpt-4",
+                model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": "You're a negotiation assistant."},
                     {"role": "user", "content": user_input}
